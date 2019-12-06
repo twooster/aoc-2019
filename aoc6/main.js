@@ -1,0 +1,1 @@
+require('fs').readFile('./input.txt', 'utf8', (f => (_, c) => console.log(f(f, c.trim().split('\n').map(s => s.split(')')).reduce((a, [c, s]) => ((a[c] = a[c] || []).push(s), a), {}), 'COM', 0)))((f, o, k, i) => (o[k] || []).reduce((a, s) => a + f(f, o, s, i+1), i)))
