@@ -6,32 +6,15 @@ import (
 	"sync"
 )
 
-type Executable interface {
-	Execute(input <-chan int, output <-chan int) error
-}
-
-type exeuteFn func(input <-chan int, output chan<- int) error
-
-func chainIntChans(id int, chs ...<-chan int) <-chan int {
+func primedChannel(ch <-chan int, a ...int) <-chan int {
 	out := make(chan int)
 	go func() {
-		for _, ch := range chs {
-			for v := range ch {
-				out <- v
-			}
-		}
-		close(out)
-	}()
-	return out
-}
-
-func intArrayToChan(i []int) <-chan int {
-	out := make(chan int)
-	go func() {
-		for _, v := range i {
+		for _, v := range a {
 			out <- v
 		}
-		close(out)
+		for v := range ch {
+			out <- v
+		}
 	}()
 	return out
 }
@@ -44,15 +27,11 @@ func executeCodeAcrossComputers(code []int, inputs []int) int {
 		errors := make([]error, len(perm))
 
 		loop := make(chan int)
-		lastOut := chainIntChans(-1, intArrayToChan([]int{0}), loop)
-		var firstIn <-chan int
+		lastOut := primedChannel(loop, 0)
 
 		for i := range perm {
 			p := Program{memory: NewMemory(code)}
-			in := chainIntChans(i, intArrayToChan(perm[i:i+1]), lastOut)
-			if firstIn == nil {
-				firstIn = in
-			}
+			in := primedChannel(lastOut, perm[i])
 			out := make(chan int)
 			wg.Add(1)
 			go func(i int) {
@@ -64,21 +43,13 @@ func executeCodeAcrossComputers(code []int, inputs []int) int {
 			lastOut = out
 		}
 
+		lastResult := 0
 		go func() {
 			for v := range lastOut {
+				lastResult = v
 				loop <- v
 			}
 			close(loop)
-		}()
-		wg.Wait()
-
-		var results []int
-		wg.Add(1)
-		go func() {
-			for v := range firstIn {
-				results = append(results, v)
-			}
-			wg.Done()
 		}()
 		wg.Wait()
 
@@ -88,8 +59,8 @@ func executeCodeAcrossComputers(code []int, inputs []int) int {
 			}
 		}
 
-		if results[0] > maxVal {
-			maxVal = results[0]
+		if lastResult > maxVal {
+			maxVal = lastResult
 		}
 	}
 
