@@ -1,7 +1,7 @@
 require('fs').readFile('./input.txt', 'utf8', (_, c) =>
     console.log(((m, I, O=[]) => (
       ((x, i=0) => { while(i > -1) i=x(i) })(i =>
-          ((c, p) => ({...[0,
+          ((c, p) => ({...[,
             () => (m[m[i+3]] = p(1) + p(2), i+4),
             () => (m[m[i+3]] = p(1) * p(2), i+4),
             () => (m[m[i+1]] = I.shift(), i+2),
