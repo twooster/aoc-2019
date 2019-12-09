@@ -5,9 +5,12 @@ import (
 	"fmt"
 )
 
-type Instruction int64
+type Word int64
+type Instruction Word
 type Operation int
 type MemMode int
+
+const WordWidth = 64
 
 const (
 	Positional MemMode = iota + 0
@@ -44,47 +47,47 @@ func (i Instruction) Operation() Operation {
 	return Operation(i % 100)
 }
 
-type binaryWriteFn func(a, b int64) int64
-type unaryJumpFn func(a int64) bool
+type binaryWriteFn func(a, b Word) Word
+type unaryJumpFn func(a Word) bool
 
-func add(a, b int64) int64 {
+func add(a, b Word) Word {
 	return a + b
 }
 
-func mul(a, b int64) int64 {
+func mul(a, b Word) Word {
 	return a * b
 }
 
-func lessThan(a, b int64) int64 {
+func lessThan(a, b Word) Word {
 	if a < b {
 		return 1
 	}
 	return 0
 }
 
-func equals(a, b int64) int64 {
+func equals(a, b Word) Word {
 	if a == b {
 		return 1
 	}
 	return 0
 }
 
-func jumpZero(a int64) bool {
+func jumpZero(a Word) bool {
 	return a == 0
 }
 
-func jumpNonZero(a int64) bool {
+func jumpNonZero(a Word) bool {
 	return a != 0
 }
 
 type Program struct {
-	memory []int64
-	ip     int64
-	rb     int64
+	memory []Word
+	ip     Word
+	rb     Word
 }
 
-func NewProgram(mem []int64) *Program {
-	c := make([]int64, len(mem)+1000)
+func NewProgram(mem []Word) *Program {
+	c := make([]Word, len(mem)+1000)
 	copy(c, mem)
 	return &Program{
 		memory: c,
@@ -129,8 +132,8 @@ func (p *Program) UnaryJump(inst Instruction, fn unaryJumpFn) error {
 	return nil
 }
 
-func (p *Program) Step(input <-chan int64, output chan<- int64) (done bool, err error) {
-	var v int64
+func (p *Program) Step(input <-chan Word, output chan<- Word) (done bool, err error) {
+	var v Word
 	var inst Instruction
 
 	if v, err = p.ReadImmediate(p.ip); err != nil {
@@ -181,7 +184,7 @@ func (p *Program) Step(input <-chan int64, output chan<- int64) (done bool, err 
 	return done, err
 }
 
-func (p *Program) Execute(input <-chan int64, output chan<- int64) (err error) {
+func (p *Program) Execute(input <-chan Word, output chan<- Word) (err error) {
 	var done bool
 	for !done && err == nil {
 		done, err = p.Step(input, output)
@@ -189,23 +192,23 @@ func (p *Program) Execute(input <-chan int64, output chan<- int64) (err error) {
 	return err
 }
 
-func (p *Program) EnsureBounds(pos int64) error {
+func (p *Program) EnsureBounds(pos Word) error {
 	if pos < 0 {
 		return fmt.Errorf("Address < 0: %v", pos)
 	} else if pos >= MaxMemorySize {
 		return fmt.Errorf("Address >= MAX_MEM: %v", pos)
-	} else if cur := int64(len(p.memory)); pos >= cur {
+	} else if cur := Word(len(p.memory)); pos >= cur {
 		for cur <= pos {
 			cur *= 2
 		}
-		c := make([]int64, cur)
+		c := make([]Word, cur)
 		copy(c, p.memory)
 		p.memory = c
 	}
 	return nil
 }
 
-func (p *Program) Read(mode MemMode, pos int64) (int64, error) {
+func (p *Program) Read(mode MemMode, pos Word) (Word, error) {
 	switch mode {
 	case Immediate:
 		return p.ReadImmediate(pos)
@@ -218,7 +221,7 @@ func (p *Program) Read(mode MemMode, pos int64) (int64, error) {
 	}
 }
 
-func (p *Program) Write(mode MemMode, pos, val int64) error {
+func (p *Program) Write(mode MemMode, pos, val Word) error {
 	switch mode {
 	case Immediate:
 		return p.WriteImmediate(pos, val)
@@ -231,7 +234,7 @@ func (p *Program) Write(mode MemMode, pos, val int64) error {
 	}
 }
 
-func (p *Program) ReadImmediate(pos int64) (int64, error) {
+func (p *Program) ReadImmediate(pos Word) (Word, error) {
 	if err := p.EnsureBounds(pos); err != nil {
 		return 0, err
 	}
@@ -239,7 +242,7 @@ func (p *Program) ReadImmediate(pos int64) (int64, error) {
 	return val, nil
 }
 
-func (p *Program) WriteImmediate(pos, val int64) error {
+func (p *Program) WriteImmediate(pos, val Word) error {
 	if err := p.EnsureBounds(pos); err != nil {
 		return err
 	}
@@ -247,7 +250,7 @@ func (p *Program) WriteImmediate(pos, val int64) error {
 	return nil
 }
 
-func (p *Program) ReadPositional(rb, pos int64) (int64, error) {
+func (p *Program) ReadPositional(rb, pos Word) (Word, error) {
 	if err := p.EnsureBounds(pos); err != nil {
 		return 0, err
 	}
@@ -259,7 +262,7 @@ func (p *Program) ReadPositional(rb, pos int64) (int64, error) {
 	return value, nil
 }
 
-func (p *Program) WritePositional(rb, pos, val int64) error {
+func (p *Program) WritePositional(rb, pos, val Word) error {
 	if err := p.EnsureBounds(pos); err != nil {
 		return err
 	}

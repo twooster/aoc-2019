@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-func readAsCSVInts(input io.Reader) ([]int64, error) {
-	var nums []int64
+func readAsCommanSeparatedWords(input io.Reader) ([]Word, error) {
+	var nums []Word
 	scanner := bufio.NewScanner(input)
 	for scanner.Scan() {
 		line := scanner.Text()
 		for _, numStr := range strings.Split(line, ",") {
-			if num, err := strconv.ParseInt(numStr, 10, 64); err == nil {
-				nums = append(nums, num)
+			if num, err := strconv.ParseInt(numStr, 10, WordWidth); err == nil {
+				nums = append(nums, Word(num))
 			} else {
 				return nil, err
 			}

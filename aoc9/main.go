@@ -6,8 +6,8 @@ import (
 	"sync"
 )
 
-func inputChannel(a []int64) <-chan int64 {
-	out := make(chan int64)
+func inputChannel(a []Word) <-chan Word {
+	out := make(chan Word)
 	go func() {
 		for _, v := range a {
 			out <- v
@@ -16,15 +16,15 @@ func inputChannel(a []int64) <-chan int64 {
 	return out
 }
 
-func runOneComputer(code []int64, input []int64) []int64 {
-	var output []int64
+func runOneComputer(code []Word, input []Word) []Word {
+	var output []Word
 	var err error
 
 	wg := sync.WaitGroup{}
 
 	p := NewProgram(code)
 	in := inputChannel(input)
-	out := make(chan int64)
+	out := make(chan Word)
 	wg.Add(1)
 	go func() {
 		err = p.Execute(in, out)
@@ -50,12 +50,12 @@ func runOneComputer(code []int64, input []int64) []int64 {
 }
 
 func main() {
-	code, err := readAsCSVInts(os.Stdin)
+	code, err := readAsCommanSeparatedWords(os.Stdin)
 	if err != nil {
 		fmt.Printf("Could not parse input: %v", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Part 1: %v\n", runOneComputer(code, []int64{1}))
-	fmt.Printf("Part 2: %v\n", runOneComputer(code, []int64{2}))
+	fmt.Printf("Part 1: %v\n", runOneComputer(code, []Word{1}))
+	fmt.Printf("Part 2: %v\n", runOneComputer(code, []Word{2}))
 }
