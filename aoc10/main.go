@@ -24,20 +24,6 @@ func absGCD(a, b int) int {
 	return a
 }
 
-func (p *Point) Less(o *Point) bool {
-	if p.y < o.y {
-		return true
-	}
-	return p.x < o.x
-}
-
-func (p *Point) Ordered(o *Point) (*Point, *Point) {
-	if p.Less(o) {
-		return p, o
-	}
-	return o, p
-}
-
 type ToShoot struct {
 	dist  float64
 	point Point
@@ -83,7 +69,7 @@ func main() {
 	const twoPi = pi64 * 2
 	const piAndHalf = halfPi + pi64
 
-	buckets := make(map[int][]ToShoot)
+	rads := make(map[int][]ToShoot)
 
 	a := pts[ptIdx]
 	for j, b := range pts {
@@ -95,6 +81,7 @@ func main() {
 
 		dist := math.Sqrt(relX*relX + relY*relY)
 		if math.Abs(dist) < 0.0000001 {
+			fmt.Println("Overlapping points wat")
 			os.Exit(2)
 		}
 
@@ -112,39 +99,38 @@ func main() {
 		}
 
 		intRads := int(cwRadsFromNorth * 1000000)
-		bucket, _ := buckets[intRads]
-		buckets[intRads] = append(bucket, ToShoot{dist: dist, point: b})
+		toShoot, _ := rads[intRads]
+		rads[intRads] = append(toShoot, ToShoot{dist: dist, point: b})
 	}
 
-	keys := make([]int, len(buckets))
+	// Sort
+	radKeys := make([]int, len(rads))
 	i := 0
-	for key, _ := range buckets {
-		keys[i] = key
-		asteroids := buckets[key]
-		sort.SliceStable(asteroids, func(i, j int) bool {
-			return asteroids[i].dist < asteroids[j].dist
+	for rad, _ := range rads {
+		radKeys[i] = rad
+		toShoot := rads[rad]
+		sort.SliceStable(toShoot, func(i, j int) bool {
+			return toShoot[i].dist < toShoot[j].dist
 		})
 		i += 1
 	}
 
-	sort.Ints(keys)
+	sort.Ints(radKeys)
 
-	var asteroid Point
+	var twoHundredth Point
 	i = 1
-	for _, k := range keys {
-		asteroids := buckets[k]
-		if len(asteroids) == 0 {
+	for _, rad := range radKeys {
+		toShoot := rads[rad]
+		if len(toShoot) == 0 {
 			continue
 		}
-		rec := asteroids[0]
-		asteroid = rec.point
-		//fmt.Printf("Pew pew: %v %.2f %.2f [%d, %d] (%d, %d)\n", i, float64(k)/1000000, rec.dist, asteroid.x, asteroid.y, asteroid.x-a.x, a.y-asteroid.y)
 		if i == 200 {
+			twoHundredth = toShoot[0].point
 			break
 		}
-		buckets[k] = asteroids[1:]
+		rads[rad] = toShoot[1:]
 		i += 1
 	}
 
-	fmt.Printf("Part 2: %v\n", asteroid.x*100+asteroid.y)
+	fmt.Printf("Part 2: %v\n", twoHundredth.x*100+twoHundredth.y)
 }
