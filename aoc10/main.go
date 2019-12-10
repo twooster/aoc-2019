@@ -50,9 +50,7 @@ func main() {
 			relY := a.y - b.y
 			div := absGCD(relX, relY)
 			basisPt := Point{relX / div, relY / div}
-			if _, hasSeen := seen[basisPt]; !hasSeen {
-				seen[basisPt] = true
-			}
+			seen[basisPt] = true
 		}
 
 		seenCount := len(seen)
