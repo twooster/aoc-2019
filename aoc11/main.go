@@ -3,67 +3,35 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 )
 
-func runOneComputer(code []Word, input <-chan Word, output chan<- Word) error {
-	var err error
-
-	wg := sync.WaitGroup{}
-
+func runProgram(code []Word, input <-chan Word, output chan<- Word) error {
+	defer closu(output)
 	p := NewProgram(code)
-	wg.Add(1)
-	go func() {
-		err = p.Execute(input, output)
-		close(output)
-		wg.Done()
-	}()
-
-	wg.Wait()
-
-	if err != nil {
-		return err
-	}
-	return nil
+	return p.Execute(input, output)
 }
+
+type Direction int
 
 const (
-	Up    = 0
-	Left  = 1
-	Down  = 2
-	Right = 3
+	Up Direction = iota
+	Left
+	Down
+	Right
 )
 
-const initGridSize = 120
-
-type Painted struct {
-	painted bool
-	color   Word
-}
-
-func doTheRobot(initColor Word, input <-chan Word, output chan<- Word) (int, [][]Painted) {
-	rows := make([][]Painted, initGridSize)
-	for y, _ := range rows {
-		rows[y] = make([]Painted, initGridSize)
-	}
-
-	painted := 0
-	x := initGridSize / 2
-	y := x
+func doTheRobot(c *Canvas, input <-chan Word, output chan<- Word) {
+	x := 0
+	y := 0
 	facing := Up
 
-	steps := 0
-	cur := &rows[y][x]
-	cur.color = initColor
-	output <- cur.color
+	output <- c.GetColor(x, y)
 	for color := range input {
+		c.SetColor(x, y, color)
+
 		direction := <-input
-		steps += 1
-		cur.color = color
-		if !cur.painted {
-			painted += 1
-			cur.painted = true
-		}
 		switch facing {
 		case Up:
 			if direction == 0 {
@@ -98,16 +66,13 @@ func doTheRobot(initColor Word, input <-chan Word, output chan<- Word) (int, [][
 				y += 1
 			}
 		}
-		cur = &rows[y][x]
-		output <- cur.color
+		output <- c.GetColor(x, y)
 	}
 	close(output)
-
-	return painted, rows
 }
 
 func main() {
-	code, err := readAsCommanSeparatedWords(os.Stdin)
+	code, err := readAsCommaSeparatedWords(os.Stdin)
 	if err != nil {
 		fmt.Printf("Could not parse input: %v", err)
 		os.Exit(1)
@@ -115,19 +80,18 @@ func main() {
 
 	robotToProgram := make(chan Word, 1)
 	programToRobot := make(chan Word, 1)
-
-	var painted int
+	canvas := NewCanvas()
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		painted, _ = doTheRobot(0, programToRobot, robotToProgram)
+		doTheRobot(canvas, programToRobot, robotToProgram)
 		wg.Done()
 	}()
 
 	wg.Add(1)
 	go func() {
-		err := runOneComputer(code, robotToProgram, programToRobot)
+		err := runProgram(code, robotToProgram, programToRobot)
 		if err != nil {
 			fmt.Printf("err %v\n", err)
 		}
@@ -135,20 +99,23 @@ func main() {
 	}()
 
 	wg.Wait()
+
+	fmt.Printf("Part 1: %v\n", canvas.Painted)
 
 	robotToProgram = make(chan Word, 1)
 	programToRobot = make(chan Word, 1)
+	canvas = NewCanvas()
+	canvas.SetColor(0, 0, 1)
 
-	var rows [][]Painted
 	wg.Add(1)
 	go func() {
-		_, rows = doTheRobot(1, programToRobot, robotToProgram)
+		doTheRobot(canvas, programToRobot, robotToProgram)
 		wg.Done()
 	}()
 
 	wg.Add(1)
 	go func() {
-		err := runOneComputer(code, robotToProgram, programToRobot)
+		err := runProgram(code, robotToProgram, programToRobot)
 		if err != nil {
 			fmt.Printf("err %v\n", err)
 		}
@@ -157,14 +124,17 @@ func main() {
 
 	wg.Wait()
 
-	for _, row := range rows {
-		for _, sq := range row {
-			if sq.color == 0 {
-				fmt.Print(".")
+	for y := canvas.MinY; y <= canvas.MaxY; y += 1 {
+		var sb strings.Builder
+		for x := canvas.MinX; x <= canvas.MaxX; x += 1 {
+			color := canvas.GetColor(x, y)
+			if color == 0 {
+				sb.WriteRune(' ')
 			} else {
-				fmt.Print("#")
+				sb.WriteRune('#')
 			}
 		}
-		fmt.Print("\n")
+		sb.WriteRune('\n')
+		fmt.Print(sb.String())
 	}
 }

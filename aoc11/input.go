@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func readAsCommanSeparatedWords(input io.Reader) ([]Word, error) {
+func readAsCommaSeparatedWords(input io.Reader) ([]Word, error) {
 	var nums []Word
 	scanner := bufio.NewScanner(input)
 	for scanner.Scan() {
